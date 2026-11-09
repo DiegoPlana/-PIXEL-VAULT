@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize, QThread, QUrl, QSettings
+from PySide6.QtCore import Qt, QSize, QThread, QUrl, QSettings, QTimer
 from PySide6.QtGui import QDesktopServices, QPixmap, QGuiApplication, QAction
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
@@ -17,6 +17,9 @@ from . import storage, devdock
 from .importer import ImportWorker
 from .media import IMAGE, AUDIO, VIDEO
 from .visuals import icon_for_asset
+from .thumbnail_worker import ThumbnailWorker
+from .update_worker import UpdateWorker
+from . import updater
 
 # Warm editorial design: far away from the blue/cyan developer-console UI.
 STYLE = """
@@ -76,6 +79,11 @@ class MainWindow(QMainWindow):
         self.offset = 0
         self.thread = None
         self.worker = None
+        self.preview_thread = None
+        self.preview_worker = None
+        self.update_thread = None
+        self.update_worker = None
+        self.pending_download = None
         self.settings = QSettings("PixelVault", "PixelVault")
         self.cache = Path(db).parent / "thumbnails"
         self.devdock_db = devdock.find_database(self.settings.value("devdock_db", ""))
@@ -92,6 +100,8 @@ class MainWindow(QMainWindow):
         self.reload_projects()
         self.load_library()
         self.set_view(self.settings.value("view", "grid"))
+        if updater.is_installed():
+            QTimer.singleShot(2500, lambda: self.check_for_updates(False))
 
     def action_button(self, label, handler, style=None):
         btn = QPushButton(label)
@@ -121,7 +131,9 @@ class MainWindow(QMainWindow):
         row.addStretch()
         row.addWidget(self.action_button("＋ Archivos", self.import_files))
         row.addWidget(self.action_button("＋ Carpeta", self.import_folder, "accent"))
-        row.addWidget(self.action_button("↻ Actualizar", self.refresh_files))
+        row.addWidget(self.action_button("↻ Biblioteca", self.refresh_files))
+        self.update_button = self.action_button("↑ Actualizaciones", lambda: self.check_for_updates(True))
+        row.addWidget(self.update_button)
         root.addWidget(header)
 
         toolbar = QHBoxLayout()
@@ -381,6 +393,41 @@ class MainWindow(QMainWindow):
                 self.table.setItem(index,column,cell)
         self.gallery.blockSignals(False)
         self.table.blockSignals(False)
+        self.queue_fbx_previews()
+
+    def queue_fbx_previews(self):
+        if self.preview_thread is not None:
+            return
+        from .fbx_preview import cache_path
+        records=[r for r in self.rows if r["extension"]==".fbx"
+                 and Path(r["path"]).is_file()
+                 and not cache_path(r,self.cache).is_file()]
+        if not records:return
+        self.preview_thread=QThread(self)
+        self.preview_worker=ThumbnailWorker(records,self.cache)
+        self.preview_worker.moveToThread(self.preview_thread)
+        self.preview_thread.started.connect(self.preview_worker.run)
+        self.preview_worker.ready.connect(self.fbx_ready)
+        self.preview_worker.finished.connect(self.preview_thread.quit)
+        self.preview_thread.finished.connect(self.preview_worker.deleteLater)
+        self.preview_thread.finished.connect(self.preview_thread.deleteLater)
+        self.preview_thread.finished.connect(self.preview_done)
+        self.preview_thread.start()
+
+    def fbx_ready(self,path):
+        for index,record in enumerate(self.rows):
+            if record["path"]!=path:continue
+            self.gallery.item(index).setIcon(icon_for_asset(record,self.cache,QSize(168,124)))
+            table_item=self.table.item(index,0)
+            if table_item:
+                table_item.setIcon(icon_for_asset(record,self.cache,QSize(36,36)))
+            if self.selected and self.selected["path"]==path:
+                self.preview.setPixmap(icon_for_asset(record,self.cache,QSize(280,210)).pixmap(QSize(280,210)))
+            break
+
+    def preview_done(self):
+        self.preview_thread=None
+        self.preview_worker=None
 
     @staticmethod
     def human_size(value):
@@ -687,6 +734,71 @@ class MainWindow(QMainWindow):
             self.worker.cancel()
             self.status.setText("Cancelando tras el archivo actual…")
 
+
+    def check_for_updates(self, manual=True):
+        if self.update_thread is not None:return
+        if not updater.is_installed():
+            if manual:
+                QMessageBox.information(self,"Actualizaciones",
+                    "Se necesita PIXEL VAULT instalado con el Setup de Windows. "
+                    "La versión portable no se actualiza automáticamente.")
+            return
+        self.start_update_worker("check",None,manual)
+
+    def start_update_worker(self, mode, info=None, manual=True):
+        if self.update_thread is not None:return
+        self.update_thread=QThread(self)
+        self.update_worker=UpdateWorker(mode,info)
+        self.update_worker.moveToThread(self.update_thread)
+        self.update_thread.started.connect(self.update_worker.run)
+        self.update_worker.result.connect(lambda result:self.update_result(mode,result,manual))
+        self.update_worker.error.connect(lambda error:self.update_error(mode,error,manual))
+        self.update_worker.progress.connect(lambda percent:self.status.setText(
+            f"Descargando actualización: {percent}%"))
+        self.update_worker.done.connect(self.update_thread.quit)
+        self.update_thread.finished.connect(self.update_worker.deleteLater)
+        self.update_thread.finished.connect(self.update_thread.deleteLater)
+        self.update_thread.finished.connect(self.update_done)
+        self.update_button.setEnabled(False)
+        self.status.setText("Buscando nueva versión…" if mode=="check" else "Descargando actualización…")
+
+    def update_result(self, mode, result, manual):
+        if mode=="check":
+            if result is None:
+                if manual:
+                    QMessageBox.information(self,"Actualizaciones","Tienes la última versión publicada.")
+                return
+            answer=QMessageBox.question(self,"Actualización disponible",
+                f'PIXEL VAULT {result["version"]} está disponible. '
+                "¿Descargar el instalador oficial y actualizar sin borrar la biblioteca?")
+            if answer==QMessageBox.StandardButton.Yes:
+                self.pending_download=result
+        else:
+            answer=QMessageBox.question(self,"Instalar actualización",
+                "Instalador descargado y verificado con SHA-256. "
+                "¿Cerrar PIXEL VAULT y ejecutar la actualización?")
+            if answer==QMessageBox.StandardButton.Yes:
+                try:
+                    updater.launch_installer(result)
+                except Exception as error:
+                    QMessageBox.warning(self,"Error al actualizar",str(error))
+                else:
+                    from PySide6.QtWidgets import QApplication
+                    QApplication.instance().quit()
+
+    def update_error(self, mode, error, manual):
+        self.status.setText("No se pudo actualizar")
+        if manual or mode=="download":
+            QMessageBox.warning(self,"Actualizaciones",error)
+
+    def update_done(self):
+        self.update_thread=None
+        self.update_worker=None
+        self.update_button.setEnabled(True)
+        if self.pending_download:
+            result=self.pending_download
+            self.pending_download=None
+            QTimer.singleShot(0,lambda:self.start_update_worker("download",result))
     def dragEnterEvent(self,event):
         if event.mimeData().hasUrls() and any(u.isLocalFile() for u in event.mimeData().urls()):
             event.acceptProposedAction()
@@ -700,6 +812,15 @@ class MainWindow(QMainWindow):
             event.acceptProposedAction()
 
     def closeEvent(self,event):
+        if self.update_thread is not None and self.update_thread.isRunning():
+            QMessageBox.information(self,"Actualización en curso",
+                "Termina la descarga antes de cerrar.")
+            event.ignore()
+            return
+        if self.preview_thread is not None and self.preview_thread.isRunning():
+            self.preview_worker.cancel()
+            self.preview_thread.quit()
+            self.preview_thread.wait()
         if self.thread is not None and self.thread.isRunning():
             QMessageBox.information(self,"Importación activa",
                 "Cancela la importación y espera a que termine antes de cerrar.")

@@ -84,6 +84,7 @@ class MainWindow(QMainWindow):
         self.output = QAudioOutput(self)
         self.player.setAudioOutput(self.output)
         self.setWindowTitle("PIXEL VAULT — Creative Asset Library")
+        self.setAcceptDrops(True)
         self.setMinimumSize(1000, 680)
         self.resize(1480, 900)
         self.setStyleSheet(STYLE)
@@ -600,7 +601,7 @@ class MainWindow(QMainWindow):
                 item.setToolTip(project["root_path"])
                 item.setData(Qt.ItemDataRole.UserRole,project)
                 self.projects_list.addItem(item)
-        except (OSError,ValueError,Exception) as error:
+        except Exception as error:
             self.devdock_projects=[]
             self.status.setText("DEVDOCK: " + str(error))
         self.projects_list.blockSignals(False)
@@ -685,6 +686,18 @@ class MainWindow(QMainWindow):
         if self.worker:
             self.worker.cancel()
             self.status.setText("Cancelando tras el archivo actual…")
+
+    def dragEnterEvent(self,event):
+        if event.mimeData().hasUrls() and any(u.isLocalFile() for u in event.mimeData().urls()):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self,event):
+        paths = [u.toLocalFile() for u in event.mimeData().urls() if u.isLocalFile()]
+        if paths:
+            self.start_import(paths)
+            event.acceptProposedAction()
 
     def closeEvent(self,event):
         if self.thread is not None and self.thread.isRunning():

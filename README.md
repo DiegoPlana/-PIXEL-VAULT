@@ -1,10 +1,10 @@
-# ◒ PIXEL VAULT — v0.2.0
+# ◒ PIXEL VAULT — v0.3.0
 
 **Digital Asset Manager & Creative Library.** Un archivo creativo local con estética editorial: ciruela profundo, marfil, coral y melocotón, en lugar de la interfaz de consola azul tradicional.
 
 ## Instalar en Windows (recomendado)
 
-Abre **Actions → Windows Installer → última ejecución correcta**, descarga el artifact **PIXEL-VAULT-Installer-Windows-v0.2.0**, descomprime el ZIP de GitHub y ejecuta `PIXEL-VAULT-Setup-0.2.0.exe`.
+Abre **Actions → Windows Installer → última ejecución correcta**, descarga el artifact **PIXEL-VAULT-Installer-Windows-v0.3.0**, descomprime el ZIP de GitHub y ejecuta `PIXEL-VAULT-Setup-0.3.0.exe`.
 
 El instalador ofrece:
 - icono propio y aplicación en menú Inicio;
@@ -15,6 +15,16 @@ El instalador ofrece:
 **No necesitas instalar Python para usar la versión instalada.** El instalador no lleva firma de código: Windows puede mostrar una advertencia SmartScreen. No hay actualizaciones automáticas todavía.
 
 También existe un artifact portable independiente, para quien prefiera no instalar.
+
+## Novedades 0.3.0: FBX y actualización desde la app
+
+- Los modelos **FBX** generan una representación isométrica de su geometría, con **Assimp 1.2** y Pillow. Se guarda en caché y se procesa en segundo plano. No es un render con materiales o animaciones.
+- La generación de miniaturas FBX admite un máximo preventivo de 350 MB por archivo y hasta 18.000 triángulos renderizados por vista previa; los archivos ilegibles muestran el icono 3D de siempre.
+- PIXEL VAULT instalado en Windows comprueba al arrancar si existe un **GitHub Release** oficial más nuevo y ofrece descargar su Setup. La descarga se verifica con el SHA-256 publicado por GitHub antes de poder ejecutarse.
+- La descarga y actualización **requieren confirmación**. El instalador Inno Setup mantiene el mismo AppId y actualiza encima conservando la base de datos SQLite, etiquetas y colecciones.
+- Si tienes la **versión 0.2.0**, debes instalar la 0.3.0 **una vez** desde GitHub para incorporar el actualizador. Las posteriores versiones publicadas podrán instalarse desde PIXEL VAULT.
+- La comprobación integrada solo funciona con el **Setup instalado en Windows**, no con el ejecutable portable ni con Python ejecutado desde código fuente.
+- Las versiones futuras deben publicarse como **GitHub Releases** con instalador y SHA-256. Un simple push a GitHub no instala una actualización.
 
 ## Qué hay nuevo
 
@@ -29,7 +39,7 @@ También existe un artifact portable independiente, para quien prefiera no insta
 
 **Houdini prioritario:** PIXEL VAULT reconoce proyectos `.hip`, `.hiplc`, `.hipnc`, assets `.hda`, `.hdalc`, `.hdanc`, `.otl`, cachés `.bgeo.sc`, `.geo.sc` y formatos de intercambio como USD, Alembic, VDB y GLB. Los clasifica como recursos 3D; por ahora no renderiza escenas de Houdini en el panel de vista previa. Se mantiene la lectura de archivos `.blend` para bibliotecas antiguas.
 
-Las tarjetas de vídeo y 3D tienen representaciones visuales por formato; la generación de fotogramas o la visualización 3D interactiva siguen pendientes.
+Los vídeos siguen utilizando iconos por formato y los FBX muestran miniaturas de geometría sin texturas. Los visores 3D interactivos siguen pendientes.
 
 ## DEVDOCK: conexión segura
 
@@ -69,3 +79,7 @@ Miniaturas reales para vídeo, visores y flujos para Houdini/Unreal, arrastrar y
 ## Estado
 
 Fuente publicada en `main`, pruebas de SQLite e integración disponibles en GitHub Actions. El funcionamiento visual del instalador debe comprobarse en un equipo Windows antes de considerar la versión estable.
+
+## Publicación de nuevas versiones
+
+El flujo `Windows Installer` compila y ejecuta pruebas en Windows. Si pasan, publica el Setup 0.3.0 en GitHub Releases además de los artifacts de Actions. Para posteriores versiones es necesario actualizar el número de versión en la aplicación, Inno Setup y el flujo de release antes de publicarlas. Si una compilación falla, no se publica un instalador nuevo.

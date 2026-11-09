@@ -84,6 +84,7 @@ class MainWindow(QMainWindow):
         self.update_thread = None
         self.update_worker = None
         self.pending_download = None
+        self.pending_install = None
         self.settings = QSettings("PixelVault", "PixelVault")
         self.cache = Path(db).parent / "thumbnails"
         self.devdock_db = devdock.find_database(self.settings.value("devdock_db", ""))
@@ -778,13 +779,7 @@ class MainWindow(QMainWindow):
                 "Instalador descargado y verificado con SHA-256. "
                 "¿Cerrar PIXEL VAULT y ejecutar la actualización?")
             if answer==QMessageBox.StandardButton.Yes:
-                try:
-                    updater.launch_installer(result)
-                except Exception as error:
-                    QMessageBox.warning(self,"Error al actualizar",str(error))
-                else:
-                    from PySide6.QtWidgets import QApplication
-                    QApplication.instance().quit()
+                self.pending_install=result
 
     def update_error(self, mode, error, manual):
         self.status.setText("No se pudo actualizar")
@@ -795,10 +790,28 @@ class MainWindow(QMainWindow):
         self.update_thread=None
         self.update_worker=None
         self.update_button.setEnabled(True)
+        if self.pending_install:
+            path=self.pending_install
+            self.pending_install=None
+            QTimer.singleShot(0,lambda:self.install_update(path))
+            return
         if self.pending_download:
             result=self.pending_download
             self.pending_download=None
             QTimer.singleShot(0,lambda:self.start_update_worker("download",result))
+    def install_update(self,path):
+        if self.thread is not None and self.thread.isRunning():
+            QMessageBox.warning(self,"Actualizaciones",
+                "Finaliza primero la importación para poder actualizar.")
+            return
+        try:
+            updater.launch_installer(path)
+        except Exception as error:
+            QMessageBox.warning(self,"Error al actualizar",str(error))
+        else:
+            from PySide6.QtWidgets import QApplication
+            QApplication.instance().quit()
+
     def dragEnterEvent(self,event):
         if event.mimeData().hasUrls() and any(u.isLocalFile() for u in event.mimeData().urls()):
             event.acceptProposedAction()

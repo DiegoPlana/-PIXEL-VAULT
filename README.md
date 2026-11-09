@@ -1,81 +1,69 @@
-# PIXEL VAULT · v0.1.0 (MVP)
+# ◒ PIXEL VAULT — v0.2.0
 
-Gestor local de recursos creativos con **Python, PySide6 y SQLite**. El código se desarrolla aquí, en GitHub, con pruebas automatizadas.
+**Digital Asset Manager & Creative Library.** Un archivo creativo local con estética editorial: ciruela profundo, marfil, coral y melocotón, en lugar de la interfaz de consola azul tradicional.
 
-## Funciones implementadas
+## Instalar en Windows (recomendado)
 
-- Importar uno o varios archivos, o carpetas recursivamente, en un hilo de trabajo.
-- Registrar ruta, tamaño, fecha de modificación, SHA-256, extensión y dimensiones de imágenes compatibles.
-- Organizar por categoría, descripción, etiquetas, favoritos y colecciones.
-- Buscar por nombre, extensión, descripción o etiquetas; filtrar, ordenar y paginar.
-- Previsualizar imágenes compatibles y reproducir algunos audios/vídeos (según códecs de Qt).
-- Detectar duplicados **exactos** mediante hash SHA-256.
-- Marcar referencias no disponibles al actualizar la biblioteca.
-- Quitar registros de la biblioteca **sin borrar nunca los archivos originales**.
+Abre **Actions → Windows Installer → última ejecución correcta**, descarga el artifact **PIXEL-VAULT-Installer-Windows-v0.2.0**, descomprime el ZIP de GitHub y ejecuta `PIXEL-VAULT-Setup-0.2.0.exe`.
 
-Los recursos se **referencian**, no se copian. La base de datos SQLite se guarda en la carpeta de datos de usuario de Qt. El programa no requiere cuenta ni servidor.
+El instalador ofrece:
+- icono propio y aplicación en menú Inicio;
+- acceso directo en el escritorio (activado por defecto);
+- opción de abrir PIXEL VAULT al acabar;
+- desinstalador desde Windows.
 
-## Arranque en Windows
+**No necesitas instalar Python para usar la versión instalada.** El instalador no lleva firma de código: Windows puede mostrar una advertencia SmartScreen. No hay actualizaciones automáticas todavía.
 
-1. Instala **Python 3.10 o superior**.
-2. Descarga este repositorio en ZIP desde GitHub y descomprímelo, o clónalo con Git.
-3. Ejecuta `ejecutar-windows.bat`.
-4. El programa te preguntará antes de instalar dependencias en el entorno virtual `.venv`.
+También existe un artifact portable independiente, para quien prefiera no instalar.
 
-Para crear un ejecutable en Windows, ejecuta después `crear-exe-windows.bat`. PyInstaller compilará `dist/PixelVault.exe` si se completa el proceso; **el EXE no viene incluido en el repositorio**.
+## Qué hay nuevo
 
-## Arranque en Linux
+- **Galería** con miniaturas de imágenes reales y tarjetas dibujadas para código, documentos, audio, vídeo, 3D y otros formatos; no quedan archivos como texto sobre espacios vacíos.
+- **Vista lista** con columnas de nombre, tipo, categoría, tamaño, fecha y ruta, como un explorador.
+- Diseño editorial claro, sin imitar a DEVDOCK: marfil, berenjena, coral, melocotón y lavanda.
+- Menú contextual con acciones rápidas, multiselección, favoritos y etiquetas en lote.
+- Búsqueda por nombre/etiquetas/descripción, filtros por categoría y extensión, ordenación y paginación.
+- Colecciones, favoritos, detección de hashes SHA-256, referencias desaparecidas y estadísticas.
+- Miniaturas de imágenes cacheadas en los datos locales de usuario.
+- **Integración real con DEVDOCK**: consulta sus proyectos en una base SQLite de solo lectura, filtra los archivos ya indexados por proyecto y permite importar un proyecto a petición del usuario. No modifica los datos de DEVDOCK.
 
-Requiere Python 3.10+, soporte `venv` y bibliotecas gráficas Qt. Desde la raíz del repositorio:
+Las tarjetas de vídeo y 3D tienen representaciones visuales por formato; la generación de fotogramas o la visualización 3D interactiva siguen pendientes.
+
+## DEVDOCK: conexión segura
+
+PIXEL VAULT intenta localizar `devdock.sqlite` en el directorio de datos de usuario de Electron (Windows: `%APPDATA%/devdock/devdock.sqlite`; Linux: `~/.config/devdock/devdock.sqlite`). Si no lo encuentra, usa **Conectar DEVDOCK** y selecciona la base de datos. Puede ser necesario abrir primero DEVDOCK para que exista.
+
+Al seleccionar un proyecto, verás sus recursos ya indexados; con **Importar proyecto** indexarás su carpeta con confirmación expresa. Esta integración lee el esquema actual de DEVDOCK (`projects` con `root_path`). No escribe sobre la otra aplicación, no ejecuta comandos de DEVDOCK y no borra archivos.
+
+## Desarrollo local
+
+Requiere Python 3.10+. En Windows ejecuta `ejecutar-windows.bat`. En Linux usa:
 
 ```bash
 bash ejecutar-linux.sh
 ```
 
-Alternativa manual:
+El primer arranque pide permiso antes de crear un entorno virtual e instalar dependencias.
 
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python launcher.py
-```
-
-## Pruebas
+Para ejecutar las pruebas:
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-GitHub Actions ejecuta las pruebas de almacenamiento y compilación sintáctica sobre varias versiones de Python. **La ejecución real de la interfaz y los instaladores en Windows/Linux necesita validación en un equipo con escritorio**.
+Si quieres compilar manualmente un ejecutable, usa `crear-exe-windows.bat`. El instalador se genera de forma reproducible con GitHub Actions, PyInstaller e Inno Setup, usando `scripts/create_icon.py`.
 
-## Estructura
+## Privacidad y precauciones
 
-```text
-src/pixel_vault/
-    main.py       Entrada Qt
-    ui.py         Interfaz, vistas y controles
-    importer.py   Escaneo de archivos en segundo plano
-    storage.py    SQLite, filtros, etiquetas y colecciones
-    media.py      Clasificación, hash y dimensiones
-tests/            Pruebas automatizadas
-.github/workflows/tests.yml
-launcher.py
-ejecutar-windows.bat
-ejecutar-linux.sh
-crear-exe-windows.bat
-```
+- **No mueve ni elimina los archivos originales.** «Quitar de biblioteca» solo elimina registros SQLite.
+- Hashes y miniaturas se calculan localmente; no se sube tu biblioteca a la nube.
+- La base de datos se guarda en el directorio de datos local de PIXEL VAULT. **Haz copia de seguridad** si tus etiquetas y colecciones son importantes.
+- Importar directorios enormes todavía puede llevar tiempo y la generación inicial de miniaturas puede ralentizar el desplazamiento. Las mejoras de indexación y renderizado asincrónicos siguen pendientes.
 
-## Pendiente
+## Próximas mejoras
 
-- Miniaturas persistentes y carga de miniaturas sin bloquear UI en bibliotecas grandes.
-- Visor 3D, miniaturas de vídeos, mejores controles multimedia.
-- Edición/renombrado y exportación de colecciones.
-- Reconciliación de archivos movidos/renombrados.
-- Importaciones incrementales más rápidas, progreso avanzado y manejo robusto de millones de archivos.
-- Etiquetado por IA, similitud visual, sincronización.
+Miniaturas reales para vídeo, mejor tratamiento de archivos Unreal/Blender, arrastrar y soltar, asociaciones de proyecto persistentes, selección avanzada, exportación de colecciones, búsqueda visual y previsualización 3D. No se consideran implementadas todavía.
 
-**Advertencia:** no hay copias de seguridad automáticas de la base de datos. No almacenes en ella información que no quieras perder sin respaldos.
+## Estado
 
-## Estado de validación
-
-Implementación inicial publicada. Las pruebas CI se configuran en GitHub Actions; no se asegura que la interfaz funcione en todas las plataformas hasta probar una instalación real. Si encuentras un fallo, abre un Issue en este repositorio con el error y el sistema operativo.
+Fuente publicada en `main`, pruebas de SQLite e integración disponibles en GitHub Actions. El funcionamiento visual del instalador debe comprobarse en un equipo Windows antes de considerar la versión estable.

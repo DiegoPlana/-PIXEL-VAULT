@@ -1,6 +1,7 @@
 """Integración local de solo lectura con DEVDОCK (Electron + node:sqlite)."""
 import os
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 def candidate_databases():
@@ -30,7 +31,7 @@ def list_projects(database_path):
     if not path.is_file():
         raise FileNotFoundError(path)
     uri = path.as_uri() + "?mode=ro"
-    with sqlite3.connect(uri, uri=True, timeout=3) as db:
+    with closing(sqlite3.connect(uri, uri=True, timeout=3)) as db:
         db.row_factory = sqlite3.Row
         data = db.execute(
             "SELECT id,name,root_path,category FROM projects ORDER BY name COLLATE NOCASE"

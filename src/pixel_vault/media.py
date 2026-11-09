@@ -5,12 +5,28 @@ from pathlib import Path
 IMAGE = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff", ".ico"}
 AUDIO = {".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"}
 VIDEO = {".mp4", ".webm", ".mkv", ".mov", ".avi"}
-MODEL = {".obj", ".fbx", ".glb", ".gltf", ".stl", ".blend"}
+# Houdini prioritario; mantenemos .blend para poder catalogar recursos antiguos.
+MODEL = {
+    ".obj", ".fbx", ".glb", ".gltf", ".stl", ".blend",
+    ".hip", ".hiplc", ".hipnc",
+    ".hda", ".hdalc", ".hdanc", ".otl", ".otlc",
+    ".geo", ".bgeo", ".bgeo.sc", ".geo.sc", ".sim", ".vdb",
+    ".usd", ".usda", ".usdc", ".usdz", ".usdnc", ".abc"
+}
+
+def file_extension(path):
+    """Path.suffix devuelve '.sc' para caches como foo.bgeo.sc."""
+    lower = Path(path).name.lower()
+    for extension in (".bgeo.sc", ".geo.sc"):
+        if lower.endswith(extension):
+            return extension
+    return Path(path).suffix.lower()
+
 DOCUMENT = {".pdf", ".doc", ".docx", ".txt", ".md", ".svg", ".psd", ".ai"}
 
 def classify(path):
     path = Path(path)
-    ext = path.suffix.lower()
+    ext = file_extension(path)
     parent = str(path.parent).lower()
     if ext in IMAGE:
         if "icon" in parent or ext == ".ico":
@@ -49,6 +65,6 @@ def inspect_file(path):
     path = Path(path).resolve()
     stat = path.stat()
     width, height = image_dimensions(path)
-    return dict(path=str(path),name=path.name,extension=path.suffix.lower(),
+    return dict(path=str(path),name=path.name,extension=file_extension(path),
         category=classify(path),size_bytes=stat.st_size,mtime_ns=stat.st_mtime_ns,
         sha256=sha256_file(path),width=width,height=height)

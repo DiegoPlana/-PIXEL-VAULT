@@ -61,6 +61,15 @@ def placeholder(extension, size=QSize(168, 124)):
 def thumbnail(record, cache_dir, size=QSize(168,124)):
     ext = record["extension"]
     filename = Path(record["path"])
+    if ext == ".fbx" and filename.is_file():
+        from .fbx_preview import cache_path
+        image = cache_path(record, cache_dir)
+        if image.is_file():
+            preview = QPixmap(str(image))
+            if not preview.isNull():
+                return preview.scaled(size, Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+        return placeholder(ext,size)
     if ext not in IMAGE or not filename.is_file():
         return placeholder(ext,size)
     cache_dir = Path(cache_dir)

@@ -27,6 +27,8 @@ También existe un artifact portable independiente, para quien prefiera no insta
 - Miniaturas de imágenes cacheadas en los datos locales de usuario.
 - **Integración real con DEVDOCK**: consulta sus proyectos en una base SQLite de solo lectura, filtra los archivos ya indexados por proyecto y permite importar un proyecto a petición del usuario. No modifica los datos de DEVDOCK.
 
+**Houdini prioritario:** PIXEL VAULT reconoce proyectos `.hip`, `.hiplc`, `.hipnc`, assets `.hda`, `.hdalc`, `.hdanc`, `.otl`, cachés `.bgeo.sc`, `.geo.sc` y formatos de intercambio como USD, Alembic, VDB y GLB. Los clasifica como recursos 3D; por ahora no renderiza escenas de Houdini en el panel de vista previa. Se mantiene la lectura de archivos `.blend` para bibliotecas antiguas.
+
 Las tarjetas de vídeo y 3D tienen representaciones visuales por formato; la generación de fotogramas o la visualización 3D interactiva siguen pendientes.
 
 ## DEVDOCK: conexión segura
@@ -62,7 +64,7 @@ Si quieres compilar manualmente un ejecutable, usa `crear-exe-windows.bat`. El i
 
 ## Próximas mejoras
 
-Miniaturas reales para vídeo, mejor tratamiento de archivos Unreal/Blender, arrastrar y soltar, asociaciones de proyecto persistentes, selección avanzada, exportación de colecciones, búsqueda visual y previsualización 3D. No se consideran implementadas todavía.
+Miniaturas reales para vídeo, visores y flujos para Houdini/Unreal, arrastrar y soltar, asociaciones de proyecto persistentes, selección avanzada, exportación de colecciones, búsqueda visual y previsualización 3D. No se consideran implementadas todavía.
 
 ## Estado
 

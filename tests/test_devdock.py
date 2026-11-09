@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,14 +9,15 @@ class DevdockTests(unittest.TestCase):
     def test_readonly_project_link(self):
         with tempfile.TemporaryDirectory() as directory:
             db=Path(directory) / "devdock.sqlite"
-            with sqlite3.connect(db) as connection:
+            with closing(sqlite3.connect(db)) as connection:
                 connection.execute("""CREATE TABLE projects (
                     id TEXT,name TEXT,root_path TEXT,category TEXT)""")
                 connection.execute("""INSERT INTO projects VALUES
                     ('1','Umbra','C:/Projects/Umbra','Game')""")
+                connection.commit()
             projects=list_projects(db)
             self.assertEqual(projects[0]["name"],"Umbra")
             self.assertEqual(project_for_path("C:/Projects/Umbra/Content/test.png",projects)["name"],"Umbra")
             self.assertIsNone(project_for_path("C:/Projects/Umbra2/test.png",projects))
-            with sqlite3.connect(db) as connection:
+            with closing(sqlite3.connect(db)) as connection:
                 self.assertEqual(connection.execute("SELECT COUNT(*) FROM projects").fetchone()[0],1)

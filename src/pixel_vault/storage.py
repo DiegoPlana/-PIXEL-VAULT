@@ -1,5 +1,6 @@
 """SQLite: catálogo de archivos sin tocar sus originales."""
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 SCHEMA = """
@@ -41,11 +42,20 @@ CREATE INDEX IF NOT EXISTS assets_hash_idx ON assets(sha256);
 CREATE INDEX IF NOT EXISTS assets_cat_idx ON assets(category);
 """
 
+@contextmanager
 def connect(path):
+    """Siempre confirmar/revertir y CERRAR SQLite (también en Windows)."""
     connection = sqlite3.connect(str(path), timeout=30)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys=ON")
-    return connection
+    try:
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 def initialize(path):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -153,7 +163,7 @@ def stats(path):
 
 def set_missing(path, file_path, missing):
     with connect(path) as db:
-        db.execute("UPDATE assets SET missing=? WHERE path=?", (int(missing), str(file_path)))
+        db.execute("UPDATE assets SET missing=? WHERE path=?", (int(missing), str(Path(file_path).resolve())))
 
 def extensions(path):
     with connect(path) as db:

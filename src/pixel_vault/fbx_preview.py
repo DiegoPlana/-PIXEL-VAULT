@@ -22,23 +22,27 @@ def read_geometry(path):
     if not scene.meshes: raise ValueError("No hay geometría 3D en este FBX")
     points, triangles=[],[]
     for mesh in scene.meshes[:100]:
+        # assimp-py 1.2 expone memoryviews PLANOS (x,y,z,x,y,z...), no filas.
         verts=mesh.vertices
-        if not len(verts): continue
-        stride=max(1,math.ceil(len(verts)/max(1,MAX_POINTS//min(len(scene.meshes),10))))
-        for i in range(0,len(verts),stride):
+        nverts=int(mesh.num_vertices)
+        if nverts<=0: continue
+        def xyz(index):
+            base=3*int(index)
+            return (float(verts[base]),float(verts[base+1]),float(verts[base+2]))
+        stride=max(1,math.ceil(nverts/max(1,MAX_POINTS//min(len(scene.meshes),10))))
+        for i in range(0,nverts,stride):
             if len(points)>=MAX_POINTS: break
-            v=tuple(float(k) for k in verts[i][:3])
-            if len(v)==3 and all(math.isfinite(k) for k in v): points.append(v)
-        faces=getattr(mesh,"faces",None)
-        if faces is None: continue
+            v=xyz(i)
+            if all(math.isfinite(k) for k in v): points.append(v)
+        indices=getattr(mesh,"indices",None)
+        if indices is None: continue
         remaining=MAX_TRIANGLES-len(triangles)
         if remaining<=0: break
-        stride=max(1,math.ceil(len(faces)/remaining))
-        for i in range(0,len(faces),stride):
-            face=faces[i]
-            if len(face)<3: continue
+        nfaces=len(indices)//3
+        stride=max(1,math.ceil(nfaces/remaining))
+        for i in range(0,nfaces,stride):
             try:
-                tri=[tuple(float(v) for v in verts[int(k)][:3]) for k in face[:3]]
+                tri=[xyz(indices[3*i+j]) for j in range(3)]
             except (IndexError,ValueError,TypeError): continue
             if all(math.isfinite(v) for p in tri for v in p):
                 triangles.append(tri)
